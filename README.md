@@ -76,4 +76,3 @@ Author: Janidu Pabasara
 
 University ID: IT23294998
 
-If you want changes to this README (more examples, badges, or CI instructions), tell me what to add.
