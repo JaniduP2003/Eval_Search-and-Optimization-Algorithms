@@ -57,4 +57,6 @@ def heuristic_custom(u: Coord, goal: Coord) -> float:
     # on a 4-neighbor grid with unit costs.
     # TODO: design and return an admissible, non-negative, finite value (<= Manhattan)
     m = heuristic_manhattan(u, goal)
-    return 0.8 * m
+    man = heuristic_manhattan(u, goal)
+    euc = heuristic_straight_line(u, goal)
+    return 0.6 * man + 0.4 * euc
