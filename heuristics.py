@@ -70,4 +70,4 @@ def heuristic_custom(u: Coord, goal: Coord) -> float:
     # Safety: ensure non-negative finite number
     if val < 0:
         return 0.0
-    return float(val)``
+    return float(val)
