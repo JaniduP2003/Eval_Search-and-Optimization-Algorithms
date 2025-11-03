@@ -13,7 +13,7 @@ START: Coord = (0, 0)
 GOAL:  Coord = (ROWS-1, COLS-1)
 
 # ---------------- Seeding & obstacle/weight generation ----------------
-CANDIDATE_SLOTS = [(1,2),(2,2),(3,1),(1,3),(2,1),(3,3),(4,2)]
+# Default number of obstacles
 DEFAULT_OBS = 4
 
 def get_seed() -> str:
@@ -27,8 +27,21 @@ def rng_from(s: str) -> random.Random:
     return random.Random(int(hashlib.sha256(s.encode()).hexdigest(), 16) % (10**9+7))
 
 def make_obstacles(seed: str, k: int = DEFAULT_OBS) -> Set[Coord]:
-    r = rng_from("OBS"+seed)
-    pool = CANDIDATE_SLOTS[:]
+    """
+    Produce k obstacle coordinates deterministically from the provided seed.
+
+    Previously this sampled from a small fixed list of candidate slots. To make
+    the grid and blocked cells more varied across different seeds/runs we now
+    sample k distinct coordinates from the whole grid (excluding START and GOAL).
+
+    The RNG is derived from the seed so results are reproducible for the same
+    seed value.
+    """
+    r = rng_from("OBS" + seed)
+    # Build the pool of all in-bounds coordinates except START and GOAL
+    pool: List[Coord] = [(rr, cc) for rr in range(ROWS) for cc in range(COLS)
+                        if (rr, cc) not in (START, GOAL)]
+    # Shuffle deterministically and take first k
     r.shuffle(pool)
     return set(pool[:k])
 
