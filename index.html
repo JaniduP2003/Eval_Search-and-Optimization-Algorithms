@@ -41,14 +41,6 @@
 </div>
 
 <script>
-// Check if running from file:// protocol
-if (window.location.protocol === 'file:') {
-  console.warn('⚠️ Running from file:// protocol. JSON loading may fail due to CORS.');
-  console.warn('💡 Solution: Run a local server instead:');
-  console.warn('   python3 -m http.server 8000');
-  console.warn('   Then open: http://localhost:8000/index.html');
-}
-
 // ------------- Helpers -------------
 function addSummaryRow(tbl, name, score, maxScore, ok, details) {
   const tr = document.createElement("tr");
@@ -166,24 +158,9 @@ function addSection(container, name, desc, data, renderFn, key) {
 }
 
 // ------------- Main -------------
-// Helper to load JSON with better error handling
-async function loadJSON(filename) {
-  try {
-    const response = await fetch(filename, {cache:"no-store"});
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error(`Failed to load ${filename}:`, error);
-    alert(`Failed to load ${filename}. Please ensure:\n1. The file exists\n2. You're serving via HTTP (e.g., python3 -m http.server)\n3. Check browser console for details\n\nError: ${error.message}`);
-    throw error;
-  }
-}
-
 Promise.all([
-  loadJSON("results.json"),
-  loadJSON("problem.json").catch(_=>null)
+  fetch("results.json",{cache:"no-store"}).then(r=>r.json()),
+  fetch("problem.json",{cache:"no-store"}).then(r=>r.json()).catch(_=>null)
 ]).then(([d,prob])=>{
   const tbl = document.querySelector("#summary-table tbody");
   const sec = document.querySelector("#sections");

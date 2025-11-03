@@ -26,8 +26,6 @@
 # - You may print debug info; the runner will still grade correctly.
 # ============================================================
 
-# student_bfs.py
-# Breadth-First Search implementation (unweighted grid).
 from typing import List, Tuple, Callable, Dict
 from collections import deque
 
@@ -41,39 +39,38 @@ def bfs(start: Coord,
     Implement classic BFS on an unweighted grid/graph.
     REQUIRED: call trace.expand(u) when you pop u from the queue.
     """
+    # TODO: BFS steps
+    # 1) Initialize a queue with start; parent = {start: None}
+    # 2) While queue non-empty:
+    #       u = queue.popleft(); trace.expand(u)
+    #       if u == goal -> reconstruct and return path
+    #       for v in neighbors_fn(u): if unseen -> parent[v]=u; enqueue v
+    # 3) If not found, return []
     if start == goal:
-        # still call expand for start as it's popped immediately
-        try:
-            trace.expand(start)
-        except Exception:
-            pass
         return [start]
 
     q = deque([start])
-    parent: Dict[Coord, None | Coord] = {start: None}
-    seen = {start}
+    parent: Dict[Coord, Coord | None] = {start: None}
 
     while q:
         u = q.popleft()
-        # trace expansion hook
+        # Mark expansion
         try:
             trace.expand(u)
         except Exception:
+            # Be robust if trace is not provided or raises
             pass
 
         if u == goal:
-            # reconstruct path
-            path = []
-            cur = u
-            while cur is not None:
-                path.append(cur)
-                cur = parent[cur]
+            # Reconstruct
+            path = [u]
+            while parent[path[-1]] is not None:
+                path.append(parent[path[-1]])
             path.reverse()
             return path
 
         for v in neighbors_fn(u):
-            if v not in seen:
-                seen.add(v)
+            if v not in parent:
                 parent[v] = u
                 q.append(v)
 
@@ -81,4 +78,4 @@ def bfs(start: Coord,
 
 # --- (ONLY IF YOUR RUNNER PASSES A Graph INSTEAD OF neighbors_fn) ---
 # def bfs_graph(graph, start, goal, trace):
-# #     return bfs(start, goal, graph.neighbors, trace)
+#     return bfs(start, goal, graph.neighbors, trace)

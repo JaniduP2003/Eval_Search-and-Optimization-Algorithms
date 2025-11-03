@@ -26,12 +26,6 @@
 # - For the custom heuristic, keep it <= Manhattan to be safe,
 #   OR design another admissible function and justify in your notes.
 # ============================================================
-# heuristics.py
-# ============================================================
-# Implemented admissible heuristics: Manhattan, Euclidean,
-# and a custom admissible heuristic (convex mix of Manhattan
-# and Euclidean; stays ≤ Manhattan).
-# ============================================================
 
 from typing import Tuple
 from math import hypot
@@ -40,34 +34,27 @@ Coord = Tuple[int, int]
 
 def heuristic_manhattan(u: Coord, goal: Coord) -> float:
     """Return |ur - gr| + |uc - gc| (admissible for 4-neighborhood)."""
+    # TODO: compute Manhattan distance between u and goal and return it
     ur, uc = u
     gr, gc = goal
     return float(abs(ur - gr) + abs(uc - gc))
 
 def heuristic_straight_line(u: Coord, goal: Coord) -> float:
     """Return Euclidean (straight-line) distance to goal (admissible)."""
+    # TODO: compute sqrt((ur-gr)^2 + (uc-gc)^2) using math.hypot
     ur, uc = u
     gr, gc = goal
     return float(hypot(ur - gr, uc - gc))
 
 def heuristic_custom(u: Coord, goal: Coord) -> float:
     """
-    Custom admissible heuristic.
-
-    Design:
-      - Both Manhattan and Euclidean are admissible on a 4-neighbour grid.
-      - Use a convex combination: alpha*Manhattan + (1-alpha)*Euclidean with 0 <= alpha <= 1.
-      - Since Euclidean <= Manhattan, any convex combination will be <= Manhattan,
-        so the result remains admissible. This can reduce plateaus compared to
-        pure Manhattan while staying admissible.
-
-    I pick alpha = 0.6 (60% Manhattan, 40% Euclidean).
+    Your own design. Must be admissible, non-negative, finite.
+    Example idea (DON'T just copy this): 0.8 * Manhattan(u, goal)
+    Explain your choice in the HTML summary notes.
     """
-    man = heuristic_manhattan(u, goal)
-    euc = heuristic_straight_line(u, goal)
-    alpha = 0.6
-    val = alpha * man + (1.0 - alpha) * euc
-    # Safety: ensure non-negative finite number
-    if val < 0:
-        return 0.0
-    return float(val)
+    # Design: a conservative scaled Manhattan distance.
+    # It is always <= Manhattan (and non-negative), so it is admissible
+    # on a 4-neighbor grid with unit costs.
+    # TODO: design and return an admissible, non-negative, finite value (<= Manhattan)
+    m = heuristic_manhattan(u, goal)
+    return 0.8 * m

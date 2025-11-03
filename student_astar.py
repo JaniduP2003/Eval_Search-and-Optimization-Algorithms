@@ -28,16 +28,8 @@
 # - On goal, reconstruct path and also compute cost (sum of steps).
 # ============================================================
 
-# --- (ONLY IF YOUR RUNNER PASSES A Graph INSTEAD OF neighbors_fn) ---
-# def astar_graph(graph, start, goal, heuristic_fn, trace):
-#     return astar(start, goal, graph.neighbors, heuristic_fn, trace)
-#
-
-# student_astar.py
-# A* search implementation that returns a path list (as used by runner.py).
 from typing import List, Tuple, Callable, Dict
 import heapq
-import itertools
 
 Coord = Tuple[int, int]
 
@@ -45,56 +37,56 @@ def astar(start: Coord,
           goal: Coord,
           neighbors_fn: Callable[[Coord], List[Coord]],
           heuristic_fn: Callable[[Coord, Coord], float],
-          trace) -> List[Coord]:
+          trace) -> Tuple[List[Coord], float]:
     """
     REQUIRED: call trace.expand(u) when you pop u from the PQ to expand.
-    Returns the path list from start to goal (or [] if no path).
     """
+    # TODO: A* outline
+    # 1) Initialize: g[start]=0, f[start]=h(start), push (f,g,node), parent, closed
+    # 2) Loop: pop best f; skip if in closed; trace.expand(u); if goal -> reconstruct path
+    #          else relax neighbors with unit cost, updating g/parent and pushing new (f,g,v)
+    # 3) If not found: return []
     if start == goal:
-        try:
-            trace.expand(start)
-        except Exception:
-            pass
-        return [start]
+        return [start]  # runner expects just a path list
 
     g: Dict[Coord, float] = {start: 0.0}
-    parent: Dict[Coord, None | Coord] = {start: None}
-    # heap of (f, tie_counter, node)
-    heap = []
-    counter = itertools.count()
-    start_h = float(heuristic_fn(start, goal))
-    heapq.heappush(heap, (start_h, next(counter), start))
-    closed = set()
+    parent: Dict[Coord, Coord | None] = {start: None}
+    # Use a deterministic tie-breaker by including g in the heap tuple
+    f0 = float(heuristic_fn(start, goal))
+    pq: List[Tuple[float, float, Coord]] = [(f0, 0.0, start)]
+    closed: set[Coord] = set()
 
-    while heap:
-        f_u, _, u = heapq.heappop(heap)
+    while pq:
+        f_u, g_u, u = heapq.heappop(pq)
         if u in closed:
             continue
 
-        # trace expansion hook
         try:
             trace.expand(u)
         except Exception:
             pass
 
         if u == goal:
-            # reconstruct path
-            path = []
-            cur = u
-            while cur is not None:
-                path.append(cur)
-                cur = parent[cur]
+            # Reconstruct path
+            path: List[Coord] = [u]
+            while parent[path[-1]] is not None:
+                path.append(parent[path[-1]])
             path.reverse()
+            # Runner only uses path; cost can be derived if needed
             return path
 
         closed.add(u)
 
         for v in neighbors_fn(u):
-            tentative = g[u] + 1.0  # unit step cost
-            if (v not in g) or (tentative < g[v] - 1e-12):
-                g[v] = tentative
+            tg = g[u] + 1.0  # unit edge cost
+            if (v not in g) or (tg < g[v] - 1e-12):
+                g[v] = tg
                 parent[v] = u
-                f_v = tentative + float(heuristic_fn(v, goal))
-                heapq.heappush(heap, (f_v, next(counter), v))
+                fv = tg + float(heuristic_fn(v, goal))
+                heapq.heappush(pq, (fv, tg, v))
 
     return []
+
+# --- (ONLY IF YOUR RUNNER PASSES A Graph INSTEAD OF neighbors_fn) ---
+# def astar_graph(graph, start, goal, heuristic_fn, trace):
+#     return astar(start, goal, graph.neighbors, heuristic_fn, trace)

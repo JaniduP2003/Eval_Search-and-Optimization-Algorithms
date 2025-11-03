@@ -29,8 +29,7 @@
 #               if v not seen in THIS DLS: mark parent[v]=u and recurse
 # - Reconstruct the path when DLS reports success.
 # ============================================================
-# student_ids.py
-# Iterative Deepening Search (IDS) implementation.
+
 from typing import List, Tuple, Callable, Dict, Optional, Set
 
 Coord = Tuple[int, int]
@@ -39,62 +38,47 @@ def ids(start: Coord,
         goal: Coord,
         neighbors_fn: Callable[[Coord], List[Coord]],
         trace,
-        max_depth: int = 64) -> List[Coord]:
+        max_depth: int = 64) -> Tuple[List[Coord], int]:
     """
-    Iterative deepening: return a path list (or [] if not found up to max_depth).
-
     REQUIRED: call trace.expand(u) in the DLS when you expand u.
     """
-    if start == goal:
-        try:
-            trace.expand(start)
-        except Exception:
-            pass
-        return [start]
-
-    def reconstruct(par: Dict[Coord, Optional[Coord]], node: Coord) -> List[Coord]:
-        path = []
-        cur = node
-        while cur is not None:
-            path.append(cur)
-            cur = par[cur]
-        path.reverse()
-        return path
-
-    for limit in range(0, max_depth + 1):
+    # TODO: IDS structure
+    # - For limit in 0..max_depth: run DLS with its own seen/parent
+    # - DLS expands nodes (trace.expand), checks goal, respects remaining depth, recurses
+    # - On success, reconstruct path; else continue increasing limit; finally return [] if not found
+    # Iteratively increase depth limit and run depth-limited DFS each time
+    for limit in range(0, int(max_depth) + 1):
         parent: Dict[Coord, Optional[Coord]] = {start: None}
-        seen: Set[Coord] = {start}
-        found = False
+        # Use a path-based visited set (recursion stack) to avoid cycles
+        path_set: Set[Coord] = {start}
 
         def dls(u: Coord, remaining: int) -> bool:
-            nonlocal found
-            # trace expansion hook
+            # Mark expansion of u at depth
             try:
                 trace.expand(u)
             except Exception:
                 pass
 
             if u == goal:
-                found = True
                 return True
             if remaining == 0:
                 return False
             for v in neighbors_fn(u):
-                if v not in seen:
-                    seen.add(v)
+                if v not in path_set:
                     parent[v] = u
+                    path_set.add(v)
                     if dls(v, remaining - 1):
                         return True
+                    path_set.remove(v)
             return False
 
         if dls(start, limit):
-            # reconstruct path using parent
-            if found:
-                return reconstruct(parent, goal)
-            # fallback: sometimes dls returns True but found not set (defensive)
-            # find any node equal to goal in parent
-            if goal in parent:
-                return reconstruct(parent, goal)
-            # else continue to next limit
+            # Reconstruct path from parent
+            path: List[Coord] = [goal]
+            while parent.get(path[-1]) is not None:
+                path.append(parent[path[-1]])
+            path.reverse()
+            # Runner expects just the path list
+            return path
 
     return []
