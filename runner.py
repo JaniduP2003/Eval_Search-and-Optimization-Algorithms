@@ -83,8 +83,31 @@ def _grid_bfs_dist(start: Coord, goal: Coord, neighbors_fn) -> float:
                 q.append(v)
     return float("inf")
 
-def build_grid(rows: int, cols: int, density: float, rng: random.Random) -> Set[Coord]:
+def build_grid(rows: int, cols: int, density: float, rng: random.Random, layout: str = "random") -> Set[Coord]:
     # density is probability of an obstacle in a non-start/non-goal cell
+    # layout modes supported:
+    #  - 'random' (default): keep existing randomized placement with connectivity check
+    #  - 'checkerboard': place obstacles on alternating cells (useful for visual tests)
+    #  - 'none': no obstacles
+    if layout == "none":
+        return set()
+
+    if layout == "checkerboard":
+        obstacles: Set[Coord] = set()
+        for r in range(rows):
+            for c in range(cols):
+                if (r, c) == START or (r, c) == (rows-1, cols-1):
+                    continue
+                # place obstacle on alternating (r+c) parity
+                if (r + c) % 2 == 0:
+                    obstacles.add((r, c))
+        # If checkerboard blocks connectivity, fall back to no obstacles
+        n4 = neighbors_4(rows, cols, obstacles)
+        if _bfs_path_local(START, (rows-1, cols-1), n4):
+            return obstacles
+        return set()
+
+    # default: random
     attempts = 0
     while attempts < 200:
         obstacles: Set[Coord] = set()
@@ -452,16 +475,18 @@ def _normalize_seed(student_id: str, seed: Optional[str]) -> str:
     return str(seed)
 
 def run_suite(student_id: str, seed: str | None = None,
-              rows: int = 6, cols: int = 6, density: float = 0.22) -> None:
+              rows: int = 6, cols: int = 6, density: float = 0.22,
+              layout: str = "random") -> None:
     seed = _normalize_seed(student_id, seed)
     rng = set_seed_from_any(seed)
-    obstacles = build_grid(rows, cols, density, rng)
+    obstacles = build_grid(rows, cols, density, rng, layout)
 
     # Save the generated problem for HTML viz
     problem = {
         "rows": rows, "cols": cols,
         "start": list(START), "goal": [rows-1, cols-1],
         "obstacles": sorted(list(obstacles)),
+        "layout": layout,
         "seed": str(seed)
     }
     with open("problem.json","w",encoding="utf-8") as f:
@@ -511,5 +536,6 @@ if __name__ == "__main__":
     ap.add_argument("--rows", type=int, default=6)
     ap.add_argument("--cols", type=int, default=6)
     ap.add_argument("--density", type=float, default=0.22)
+    ap.add_argument("--layout", choices=["random","checkerboard","none"], default="random", help="Obstacle layout mode")
     args = ap.parse_args()
-    run_suite(args.student_id, seed=args.seed, rows=args.rows, cols=args.cols, density=args.density)
+    run_suite(args.student_id, seed=args.seed, rows=args.rows, cols=args.cols, density=args.density, layout=args.layout)
