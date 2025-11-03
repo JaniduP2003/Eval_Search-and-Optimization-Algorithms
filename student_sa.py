@@ -1,40 +1,12 @@
-# student_sa.py
+## student_sa.py
+# Completed key SA pieces: mutation policy, acceptance, cooling schedule.
 from __future__ import annotations
 from typing import List, Tuple, Set, Optional, Callable
 import math, random, collections
 
-"""
-===========================================================
-Simulated Annealing — Overall Pseudocode (Path Improvement)
-===========================================================
-Goal: improve a feasible S→G path on a grid by local mutations.
-
-1) Build an initial feasible path P0 (e.g., BFS on the grid).
-2) Set current := P0, best := P0, T := T0.
-3) Repeat for k = 1..iters:
-     a) Candidate := mutate(current)      # either "exploit" (shortcut) or "explore" (detour)
-     b) Δ := cost(Candidate) - cost(Current)
-     c) If Δ < 0, accept Candidate.
-        Else accept with probability exp( -Δ / T ).      ← KEY CONCEPT
-     d) If accepted, current := Candidate.
-     e) If current better than best, best := current.
-     f) Record best cost in history.
-     g) Cool the temperature: T := alpha * T.            ← KEY CONCEPT
-     h) (Optional) If stuck for long, perform a small restart around best.
-4) Return (best, history of best_costs).
-Notes:
-- Mutations should always yield valid S→G paths (no obstacles).
-- Objective is provided by the runner (default: length + 0.2*turns).
-"""
-
-# ----------------------------
-# Types
-# ----------------------------
 Coord = Tuple[int, int]
 
-# ----------------------------
-# Small Utilities (implemented)
-# ----------------------------
+# (utilities and mutation operators kept as in template)
 def _bfs_path(start: Coord, goal: Coord, neighbors_fn: Callable[[Coord], List[Coord]]) -> List[Coord]:
     """Feasible S→G path on unweighted grid."""
     if start == goal:
@@ -114,9 +86,6 @@ def _random_walk_connect(a: Coord, b: Coord, neighbors_fn: Callable[[Coord], Lis
             return path
     return []
 
-# ----------------------------
-# Mutation Operators (implemented baseline)
-# ----------------------------
 def _mutate_shortcut(path: List[Coord],
                      neighbors_fn: Callable[[Coord], List[Coord]],
                      rng: random.Random) -> List[Coord]:
@@ -147,9 +116,6 @@ def _mutate_detour(path: List[Coord],
         return _splice(path, i, j, mid)
     return path[:]
 
-# ----------------------------
-# Simulated Annealing (only a few KEY lines to fill)
-# ----------------------------
 def simulated_annealing(
     neighbors_fn: Callable[[Coord], List[Coord]],
     objective_fn: Callable[[List[Coord]], float],
@@ -161,12 +127,6 @@ def simulated_annealing(
 ):
     """
     Return (best_path, history). History logs best-so-far cost after each iteration.
-
-    KEY LINES FOR STUDENTS:
-      • Mutation policy: choose between shortcut (exploit) and detour (explore).
-      • Acceptance probability: exp(-Δ / T) for Δ>0.
-      • Cooling schedule: update T each iteration.
-      • (Optional) Restart trigger thresholds (when 'no_improve' is large).
     """
     rng = random.Random(str(seed))
 
@@ -210,9 +170,11 @@ def simulated_annealing(
     for k in range(1, int(iters)+1):
 
         # --- (1) Mutation policy: choose exploit vs explore -----------------
-        # TODO (fill this line): pick one of the two operators; e.g., mostly shortcut, sometimes detour.
-        # Example idea (don’t copy literally): if k % 3 == 0 -> detour else shortcut
-        cand = _mutate_shortcut(current, neighbors_fn, rng)  # REPLACE with your policy
+        # mostly try shortcuts, occasionally detours for exploration
+        if rng.random() < 0.75:
+            cand = _mutate_shortcut(current, neighbors_fn, rng)
+        else:
+            cand = _mutate_detour(current, neighbors_fn, rng)
 
         cand_cost = safe_cost(cand)
         delta = cand_cost - cur_cost
@@ -222,9 +184,11 @@ def simulated_annealing(
         if delta < 0:
             accept = True
         else:
-            # TODO (fill this line): classic Metropolis acceptance using T
-            # prob = exp( ? )  and compare with rng.random()
-            prob = 0.0  # REPLACE with exp(-delta / T)
+            # classic Metropolis acceptance using temperature T
+            try:
+                prob = math.exp(-delta / T) if T > 0 else 0.0
+            except OverflowError:
+                prob = 0.0
             if rng.random() < prob:
                 accept = True
 
@@ -243,13 +207,9 @@ def simulated_annealing(
         history.append(best_cost)
 
         # --- (3) Cooling schedule ------------------------------------------
-        # TODO (fill this line): update temperature each iteration with alpha
-        # e.g., T = alpha * T
-        T = T  # REPLACE with cooled temperature
+        T = T * alpha
 
         # --- (4) Optional: simple restart if stuck --------------------------
-        # You may tune these thresholds (bonus, not required).
-        # TODO (optional): adjust these numbers or leave as-is.
         if no_improve > 250 and k < int(iters * 0.9):
             current = best[:]
             cur_cost = best_cost
@@ -258,4 +218,4 @@ def simulated_annealing(
             cur_cost = safe_cost(current)
             no_improve = 0
 
-    return best, history
+    return best, history student_sa.py
