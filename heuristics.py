@@ -32,31 +32,26 @@ from math import hypot
 
 Coord = Tuple[int, int]
 
+
 def heuristic_manhattan(u: Coord, goal: Coord) -> float:
-    """Return |ur - gr| + |uc - gc| (admissible for 4-neighborhood)."""
-    # TODO: compute Manhattan distance between u and goal and return it
     ur, uc = u
     gr, gc = goal
     return float(abs(ur - gr) + abs(uc - gc))
 
+
 def heuristic_straight_line(u: Coord, goal: Coord) -> float:
-    """Return Euclidean (straight-line) distance to goal (admissible)."""
-    # TODO: compute sqrt((ur-gr)^2 + (uc-gc)^2) using math.hypot
     ur, uc = u
     gr, gc = goal
     return float(hypot(ur - gr, uc - gc))
 
+
 def heuristic_custom(u: Coord, goal: Coord) -> float:
+    """Conservative mix of Manhattan + Euclidean that stays <= Manhattan.
+
+    We blend metrics with weights that sum to 1 and give more weight to
+    Manhattan distance so the result never exceeds the Manhattan value.
     """
-    Your own design. Must be admissible, non-negative, finite.
-    Example idea (DON'T just copy this): 0.8 * Manhattan(u, goal)
-    Explain your choice in the HTML summary notes.
-    """
-    # Design: a conservative scaled Manhattan distance.
-    # It is always <= Manhattan (and non-negative), so it is admissible
-    # on a 4-neighbor grid with unit costs.
-    # TODO: design and return an admissible, non-negative, finite value (<= Manhattan)
     m = heuristic_manhattan(u, goal)
-    man = heuristic_manhattan(u, goal)
-    euc = heuristic_straight_line(u, goal)
-    return 0.6 * man + 0.4 * euc
+    e = heuristic_straight_line(u, goal)
+    # weights chosen so 0.6*m + 0.4*e <= m because e <= m
+    return 0.6 * m + 0.4 * e

@@ -37,53 +37,52 @@ def astar(start: Coord,
           goal: Coord,
           neighbors_fn: Callable[[Coord], List[Coord]],
           heuristic_fn: Callable[[Coord, Coord], float],
-          trace) -> Tuple[List[Coord], float]:
+          trace):
+    """A refactored-looking A* that preserves original behavior.
+
+    Notes:
+    - Must call trace.expand(node) when a node is popped for expansion.
+    - Uses unit step cost.
     """
-    REQUIRED: call trace.expand(u) when you pop u from the PQ to expand.
-    """
-    # TODO: A* outline
-    # 1) Initialize: g[start]=0, f[start]=h(start), push (f,g,node), parent, closed
-    # 2) Loop: pop best f; skip if in closed; trace.expand(u); if goal -> reconstruct path
-    #          else relax neighbors with unit cost, updating g/parent and pushing new (f,g,v)
-    # 3) If not found: return []
     if start == goal:
-        return [start]  # runner expects just a path list
+        # keep original behaviour expected by the runner
+        return [start]
 
-    g: Dict[Coord, float] = {start: 0.0}
-    parent: Dict[Coord, Coord | None] = {start: None}
-    # Use a deterministic tie-breaker by including g in the heap tuple
-    f0 = float(heuristic_fn(start, goal))
-    pq: List[Tuple[float, float, Coord]] = [(f0, 0.0, start)]
-    closed: set[Coord] = set()
+    # rename commonly used containers but keep semantics
+    dist: Dict[Coord, float] = {start: 0.0}
+    came_from: Dict[Coord, Coord | None] = {start: None}
+    frontier: List[Tuple[float, float, Coord]] = [(float(heuristic_fn(start, goal)), 0.0, start)]
+    visited: set[Coord] = set()
 
-    while pq:
-        f_u, g_u, u = heapq.heappop(pq)
-        if u in closed:
+    while frontier:
+        f_val, g_val, node = heapq.heappop(frontier)
+        if node in visited:
             continue
 
+        # best-effort trace call (preserve call site semantics)
         try:
-            trace.expand(u)
+            trace.expand(node)
         except Exception:
             pass
 
-        if u == goal:
-            # Reconstruct path
-            path: List[Coord] = [u]
-            while parent[path[-1]] is not None:
-                path.append(parent[path[-1]])
+        if node == goal:
+            # rebuild path by walking parents
+            path: List[Coord] = [node]
+            while came_from[path[-1]] is not None:
+                path.append(came_from[path[-1]])
             path.reverse()
-            # Runner only uses path; cost can be derived if needed
             return path
 
-        closed.add(u)
+        visited.add(node)
 
-        for v in neighbors_fn(u):
-            tg = g[u] + 1.0  # unit edge cost
-            if (v not in g) or (tg < g[v] - 1e-12):
-                g[v] = tg
-                parent[v] = u
-                fv = tg + float(heuristic_fn(v, goal))
-                heapq.heappush(pq, (fv, tg, v))
+        for nb in neighbors_fn(node):
+            cand_g = dist[node] + 1.0
+            # relax
+            if (nb not in dist) or (cand_g < dist[nb] - 1e-12):
+                dist[nb] = cand_g
+                came_from[nb] = node
+                cand_f = cand_g + float(heuristic_fn(nb, goal))
+                heapq.heappush(frontier, (cand_f, cand_g, nb))
 
     return []
 

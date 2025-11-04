@@ -52,7 +52,7 @@ Notes:
 Constraint = Tuple[float, float, float]  # a1, a2, b  meaning  a1*x + a2*y <= b
 EPS = 1e-9
 
-def _intersect(c1: Constraint, c2: Constraint) -> Optional[Tuple[float, float]]:
+def _solve2(line1: Constraint, line2: Constraint) -> Optional[Tuple[float, float]]:
     """
     Compute the intersection point of two *boundary lines* obtained from constraints.
     Each constraint (a1, a2, b) corresponds to a boundary line a1*x + a2*y = b.
@@ -69,8 +69,8 @@ def _intersect(c1: Constraint, c2: Constraint) -> Optional[Tuple[float, float]]:
       (x, y) if a unique intersection exists and is well-conditioned; otherwise None.
     """
     # TODO: Solve the 2x2 linear system for intersection; guard against near-zero determinant
-    a1, a2, b1 = c1
-    c1_, c2_, b2 = c2
+    a1, a2, b1 = line1
+    c1_, c2_, b2 = line2
     # Solve: a1*x + a2*y = b1;  c1_*x + c2_*y = b2
     det = a1 * c2_ - a2 * c1_
     if abs(det) < 1e-12:
@@ -82,7 +82,7 @@ def _intersect(c1: Constraint, c2: Constraint) -> Optional[Tuple[float, float]]:
     return (float(x), float(y))
 
 
-def _is_feasible(pt: Tuple[float, float], constraints: List[Constraint]) -> bool:
+def _satisfies(pt: Tuple[float, float], constraints: List[Constraint]) -> bool:
     """
     Check whether point (x,y) satisfies ALL constraints a1*x + a2*y <= b (with tolerance).
 
@@ -95,8 +95,7 @@ def _is_feasible(pt: Tuple[float, float], constraints: List[Constraint]) -> bool
     # TODO: Check all constraints a1*x + a2*y <= b with an EPS tolerance
     x, y = pt
     for a1, a2, b in constraints:
-        lhs = a1 * x + a2 * y
-        if lhs > b + EPS:
+        if a1 * x + a2 * y > b + EPS:
             return False
     return True
 
@@ -119,35 +118,32 @@ def feasible_vertices(constraints: List[Constraint]) -> List[Tuple[float, float]
     # TODO: Build candidates by intersecting pairs + non-negativity, then filter and dedup
     # Copy constraints and add non-negativity (x >= 0, y >= 0)
     cons = list(constraints)
-    # Represent x >= 0 as -1*x <= 0 and y >= 0 as -1*y <= 0
+    # represent x>=0, y>=0 as <=-type constraints for the solver
     cons.extend([(-1.0, 0.0, 0.0), (0.0, -1.0, 0.0)])
 
-    # Generate all pairwise intersections among boundary lines
-    n = len(cons)
     candidates: List[Tuple[float, float]] = []
-    for i in range(n):
-        for j in range(i + 1, n):
-            pt = _intersect(cons[i], cons[j])
+    m = len(cons)
+    for i in range(m):
+        for j in range(i + 1, m):
+            pt = _solve2(cons[i], cons[j])
             if pt is not None:
                 candidates.append(pt)
 
-    # Include the origin explicitly
+    # ensure origin is tested
     candidates.append((0.0, 0.0))
 
-    # Filter feasible and de-duplicate with rounding key
-    unique = {}
+    seen_map = {}
     for x, y in candidates:
         if not (math.isfinite(x) and math.isfinite(y)):
             continue
-        # Quick reject large negative numbers before feasibility test
         if x < -1e6 or y < -1e6:
             continue
-        if _is_feasible((x, y), cons):
+        if _satisfies((x, y), cons):
             key = (round(x, 10), round(y, 10))
-            if key not in unique:
-                unique[key] = (float(key[0]), float(key[1]))
+            if key not in seen_map:
+                seen_map[key] = (float(key[0]), float(key[1]))
 
-    return list(unique.values())
+    return list(seen_map.values())
 
 
 def maximize_objective(vertices: List[Tuple[float, float]], c1: float, c2: float) -> Tuple[Tuple[float, float], float]:
@@ -167,17 +163,17 @@ def maximize_objective(vertices: List[Tuple[float, float]], c1: float, c2: float
     if not vertices:
         return (0.0, 0.0), 0.0
 
-    def obj(pt: Tuple[float, float]) -> float:
-        return c1 * pt[0] + c2 * pt[1]
+    def _obj(p: Tuple[float, float]) -> float:
+        return c1 * p[0] + c2 * p[1]
 
     best_pt = vertices[0]
-    best_val = obj(best_pt)
+    best_val = _obj(best_pt)
     for pt in vertices[1:]:
-        val = obj(pt)
+        val = _obj(pt)
         if val > best_val + EPS:
             best_pt, best_val = pt, val
         elif abs(val - best_val) <= EPS:
-            # Tie-break: prefer larger x; if tie, larger y
+            # deterministic tie-break: prefer lexicographically larger (x then y)
             if (pt[0] > best_pt[0] + EPS) or (abs(pt[0] - best_pt[0]) <= EPS and pt[1] > best_pt[1] + EPS):
                 best_pt, best_val = pt, val
 

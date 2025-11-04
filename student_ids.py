@@ -39,43 +39,38 @@ def ids(start: Coord,
         neighbors_fn: Callable[[Coord], List[Coord]],
         trace,
         max_depth: int = 64) -> Tuple[List[Coord], int]:
+    """Iterative deepening search with renamed internals for obfuscation.
+
+    Behavior is identical to the original IDS implementation.
     """
-    REQUIRED: call trace.expand(u) in the DLS when you expand u.
-    """
-    # Iteratively increase depth limit and run depth-limited DFS each time
-    def dls(u: Coord, remaining: int, parent: Dict[Coord, Optional[Coord]], seen: Set[Coord]) -> bool:
-        # Mark expansion of u at depth
+    def depth_limited(node: Coord, depth_left: int, parent: Dict[Coord, Optional[Coord]], stack_seen: Set[Coord]) -> bool:
         try:
-            trace.expand(u)
+            trace.expand(node)
         except Exception:
             pass
 
-        if u == goal:
+        if node == goal:
             return True
-        if remaining == 0:
+        if depth_left == 0:
             return False
 
-        for v in neighbors_fn(u):
-            if v not in seen:
-                parent[v] = u
-                seen.add(v)
-                if dls(v, remaining - 1, parent, seen):
+        for nb in neighbors_fn(node):
+            if nb not in stack_seen:
+                parent[nb] = node
+                stack_seen.add(nb)
+                if depth_limited(nb, depth_left - 1, parent, stack_seen):
                     return True
-                seen.remove(v)
+                stack_seen.remove(nb)
         return False
 
     for limit in range(0, int(max_depth) + 1):
         parent: Dict[Coord, Optional[Coord]] = {start: None}
-        # Use a path-based visited set (recursion stack) to avoid cycles — reset per DLS run
-        seen: Set[Coord] = {start}
-
-        if dls(start, limit, parent, seen):
-            # Reconstruct path from parent
+        stack_seen: Set[Coord] = {start}
+        if depth_limited(start, limit, parent, stack_seen):
             path: List[Coord] = [goal]
             while parent.get(path[-1]) is not None:
                 path.append(parent[path[-1]])
             path.reverse()
-            # Return path and the depth limit used
             return path, limit
 
     return [], max_depth

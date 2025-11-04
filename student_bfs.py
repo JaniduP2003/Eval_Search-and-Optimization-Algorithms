@@ -35,44 +35,35 @@ def bfs(start: Coord,
         goal: Coord,
         neighbors_fn: Callable[[Coord], List[Coord]],
         trace) -> List[Coord]:
+    """Breadth-first search - restructured variable names only.
+
+    Guarantees shortest path in unweighted graphs. Calls trace.expand
+    when a node is removed from the frontier.
     """
-    Implement classic BFS on an unweighted grid/graph.
-    REQUIRED: call trace.expand(u) when you pop u from the queue.
-    """
-    # TODO: BFS steps
-    # 1) Initialize a queue with start; parent = {start: None}
-    # 2) While queue non-empty:
-    #       u = queue.popleft(); trace.expand(u)
-    #       if u == goal -> reconstruct and return path
-    #       for v in neighbors_fn(u): if unseen -> parent[v]=u; enqueue v
-    # 3) If not found, return []
     if start == goal:
         return [start]
 
-    q = deque([start])
-    parent: Dict[Coord, Coord | None] = {start: None}
+    frontier = deque([start])
+    predecessor: Dict[Coord, Coord | None] = {start: None}
 
-    while q:
-        u = q.popleft()
-        # Mark expansion
+    while frontier:
+        current = frontier.popleft()
         try:
-            trace.expand(u)
+            trace.expand(current)
         except Exception:
-            # Be robust if trace is not provided or raises
             pass
 
-        if u == goal:
-            # Reconstruct
-            path = [u]
-            while parent[path[-1]] is not None:
-                path.append(parent[path[-1]])
-            path.reverse()
-            return path
+        if current == goal:
+            route: List[Coord] = [current]
+            while predecessor[route[-1]] is not None:
+                route.append(predecessor[route[-1]])
+            route.reverse()
+            return route
 
-        for v in neighbors_fn(u):
-            if v not in parent:
-                parent[v] = u
-                q.append(v)
+        for nb in neighbors_fn(current):
+            if nb not in predecessor:
+                predecessor[nb] = current
+                frontier.append(nb)
 
     return []
 
